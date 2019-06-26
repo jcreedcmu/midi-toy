@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+	 "jsx": "react",
+    "module": "commonjs",
+	 "lib": [ "es2017.object", "dom", "es6" ],
+    "sourceMap": true,
+	 "noFallthroughCasesInSwitch": true,
+	 "noImplicitAny": true,
+	 "strictNullChecks": true,
+	 "strictPropertyInitialization": true,
+    "esModuleInterop": true,
+	 "typeRoots": [ "./types", "./node_modules/@types"]
+  },
+  "exclude": ["node_modules", "typings"]
+}
