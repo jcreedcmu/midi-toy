@@ -1,0 +1,12 @@
+
+#ui { background-color: #f0f7ff; padding: 2em; border: 1px solid #bdf; }
+
+
+* {  font-family: sans; }
+
+body {
+  height: 100vh;
+  margin: 0px;
+  display: grid;
+  place-items: center center;
+ }
