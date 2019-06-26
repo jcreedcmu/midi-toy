@@ -1,12 +1,15 @@
 
 #ui { background-color: #f0f7ff; padding: 2em; border: 1px solid #bdf; }
+#ui.wrong { background-color: #fff0f0; border: 1px solid #fbb; }
+#ui.right { background-color: #f0fff0; border: 1px solid #bfb; }
 
 
 * {  font-family: sans; }
 
-body {
+#root {
   height: 100vh;
-  margin: 0px;
   display: grid;
   place-items: center center;
  }
+
+body { margin: 0px; }

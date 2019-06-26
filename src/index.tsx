@@ -27,8 +27,13 @@ function generateRandomNote(s: AppState): AppState {
   });
 }
 
+function hex(x: number): string {
+  return x.toString(16);
+}
+
 class App extends React.Component<AppProps, AppState> {
   outPort: WebMidi.MIDIOutput | undefined;
+
 
   constructor(p: AppProps) {
     super(p);
@@ -41,7 +46,7 @@ class App extends React.Component<AppProps, AppState> {
   render() {
     const s = this.state;
     return (
-      <div>
+      <div id="ui" className={s.remainingInput.length == 0 ? "right" : s.mistake ? "wrong" : undefined}>
         {JSON.stringify(s.playedInterval.map(x => x.p))}
       </div>
     );
@@ -55,12 +60,38 @@ class App extends React.Component<AppProps, AppState> {
             this.outPort = port;
           }
         }
-      }
-    )
+        let inPort: WebMidi.MIDIInput | undefined;
+        for (const port of acc.inputs.values()) {
+          if (!port.name!.match(/through/i)) {
+            console.log(port);
+            inPort = port;
+          }
+        }
+        inPort!.onmidimessage = this._handleMidi.bind(this);
+      });
+
+
     document.addEventListener('keydown', this._handleKeyDown.bind(this));
   }
   componentWillUnmount() {
     document.removeEventListener('keydown', this._handleKeyDown.bind(this));
+  }
+
+  _handleMidi(m: WebMidi.MIDIMessageEvent) {
+    const { data } = m;
+    if (data[0] == 0x90 && data[2] > 0) {
+      if (this.state.remainingInput.length > 0) {
+        this.setState(s => produce(s, s => {
+          if (data[1] == s.remainingInput[0].p) {
+            s.remainingInput.shift();
+          }
+          else {
+            s.mistake = true;
+          }
+        }));
+      }
+    }
+
   }
   _handleKeyDown(e: KeyboardEvent) {
     if (e.keyCode == 32) {
@@ -72,14 +103,14 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  async  play(): Promise<void> {
+  async play(): Promise<void> {
     for (const n of this.state.playedInterval) {
-      this.outPort!.send([0x90, n.p, 0x30]);
-      await delay(0.1);
-      this.outPort!.send([0x80, n.p, 0x00]);
+      this.outPort!.send([0x90, n.p, 0x28]);
       await delay(0.2);
+      this.outPort!.send([0x80, n.p, 0x00]);
+      await delay(0.1);
     }
   }
 }
 
-render(<App />, document.getElementById('ui'));
+render(<App />, document.getElementById('root'));
