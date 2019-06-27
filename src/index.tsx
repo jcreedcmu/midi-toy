@@ -11,6 +11,12 @@ type AppState = {
   remainingInput: Note[],
 };
 
+async function aeach<T>(list: T[], k: (x: T) => Promise<void>) {
+  for (const x of list) {
+    await k(x);
+  }
+}
+
 function delay(seconds: number): Promise<void> {
   return new Promise((res, rej) => {
     setTimeout(res, seconds * 1000);
@@ -45,9 +51,15 @@ class App extends React.Component<AppProps, AppState> {
   }
   render() {
     const s = this.state;
+    let uiclass: string | undefined = undefined;
+    if (s.mistake)
+      uiclass = "wrong";
+    else if (s.remainingInput.length == 0)
+      uiclass = "right";
     return (
-      <div id="ui" className={s.remainingInput.length == 0 ? "right" : s.mistake ? "wrong" : undefined}>
-        {JSON.stringify(s.playedInterval.map(x => x.p))}
+      <div id="ui" className={uiclass}>
+        {JSON.stringify(s.playedInterval.map(x => x.p))}<br />
+        {JSON.stringify(s.remainingInput.map(x => x.p))}
       </div>
     );
   }
@@ -80,6 +92,10 @@ class App extends React.Component<AppProps, AppState> {
   _handleMidi(m: WebMidi.MIDIMessageEvent) {
     const { data } = m;
     if (data[0] == 0x90 && data[2] > 0) {
+      if (data[1] == 24) {
+        this.replaySoon();
+        return;
+      }
       if (this.state.remainingInput.length > 0) {
         this.setState(s => produce(s, s => {
           if (data[1] == s.remainingInput[0].p) {
@@ -89,26 +105,55 @@ class App extends React.Component<AppProps, AppState> {
             s.mistake = true;
           }
         }));
+        if (this.state.remainingInput.length == 0) {
+          this.newProblemSoon(this.state.mistake);
+        }
       }
     }
-
   }
+
+  async playNote(pitch: number) {
+    this.outPort!.send([0x90, pitch, 0x28]);
+    await delay(0.2);
+    this.outPort!.send([0x80, pitch, 0x00]);
+    await delay(0.1);
+  }
+
+  async replaySoon(): Promise<void> {
+    await delay(0.5);
+    this.play();
+  }
+
+  async newProblemSoon(mistake: boolean): Promise<void> {
+    await delay(0.5);
+    if (mistake) {
+      [30].forEach(p => this.playNote(p));
+    }
+    else {
+      [60, 64, 67, 72].forEach(p => this.playNote(p));
+    }
+    await delay(1);
+    this.newProblem();
+  }
+
+  newProblem(): void {
+    this.setState(s => generateRandomNote(s));
+    this.play();
+  }
+
   _handleKeyDown(e: KeyboardEvent) {
     if (e.keyCode == 32) {
-      this.setState(s => generateRandomNote(s));
+      this.newProblem();
+    }
+    if (e.keyCode == 82 && !e.ctrlKey) {
       this.play();
     }
-    if (e.keyCode == 114) {
-      this.play();
-    }
+    console.log(e.keyCode);
   }
 
   async play(): Promise<void> {
     for (const n of this.state.playedInterval) {
-      this.outPort!.send([0x90, n.p, 0x28]);
-      await delay(0.2);
-      this.outPort!.send([0x80, n.p, 0x00]);
-      await delay(0.1);
+      await this.playNote(n.p);
     }
   }
 }
