@@ -9,8 +9,11 @@ type Note = { p: number };
 type AppProps = {};
 type AppState = {
   playedInterval: Note[],
+  playedIntervalSize: number | undefined,
   mistake: boolean,
   remainingInput: Note[],
+  right: number[],
+  wrong: number[],
 };
 
 async function aeach<T>(list: T[], k: (x: T) => Promise<void>) {
@@ -32,11 +35,20 @@ function generateRandomNote(s: AppState): AppState {
     s.mistake = false;
     s.remainingInput = [{ p: pitch1 }, { p: pitch1 + interval }];
     s.playedInterval = [{ p: pitch1 }, { p: pitch1 + interval }];
+    s.playedIntervalSize = interval;
   });
 }
 
 function hex(x: number): string {
   return x.toString(16);
+}
+
+function range(n: number): number[] {
+  const rv: number[] = [];
+  for (let i = 0; i < n; i++) {
+    rv.push(i);
+  }
+  return rv;
 }
 
 class App extends React.Component<AppProps, AppState> {
@@ -45,12 +57,22 @@ class App extends React.Component<AppProps, AppState> {
 
   constructor(p: AppProps) {
     super(p);
-    this.state = {
+    const state = {
       playedInterval: [],
+      playedIntervalSize: undefined,
       mistake: false,
       remainingInput: [],
+      right: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      wrong: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     };
+    if (localStorage['score'] != undefined) {
+      const j: { right: number[], wrong: number[] } = JSON.parse(localStorage['score']);
+      state.right = j.right;
+      state.wrong = j.wrong;
+    }
+    this.state = state;
   }
+
   render() {
     const s = this.state;
     let uiclass: string | undefined = undefined;
@@ -58,10 +80,21 @@ class App extends React.Component<AppProps, AppState> {
       uiclass = "wrong";
     else if (s.remainingInput.length == 0)
       uiclass = "right";
+    const rows = [undefined, s.right, s.wrong].map((table, rowi) => {
+      const cells = range(12).map((p, pi) => {
+        if (table == undefined)
+          return <td key={`tr${rowi}td${pi}`}><b>{p + 1}</b></td>;
+        else
+          return <td key={`tr${rowi}td${pi}`}>{table[p + 1] || 0}</td>;
+      });
+      return <tr key={`tr${rowi}`}>{cells}</tr>;
+    });
+    const scoreTable = <table><tbody>{rows}</tbody></table>;
     return (
       <div id="ui" className={uiclass}>
-        {JSON.stringify(s.playedInterval.map(x => x.p))}<br />
+        {s.playedIntervalSize}< br />
         {JSON.stringify(s.remainingInput.map(x => x.p))}
+        {scoreTable}
       </div>
     );
   }
@@ -87,8 +120,25 @@ class App extends React.Component<AppProps, AppState> {
 
     document.addEventListener('keydown', this._handleKeyDown.bind(this));
   }
+
   componentWillUnmount() {
     document.removeEventListener('keydown', this._handleKeyDown.bind(this));
+  }
+
+  _scoreLastProblem(): void {
+    function incr(table: { [x: number]: number }, i: number) {
+      if (table[i] == undefined)
+        table[i] = 0;
+      table[i]++;
+    }
+    this.setState(s => produce(s, s => {
+      const i = s.playedIntervalSize;
+      if (i != undefined) {
+        incr(s.mistake ? s.wrong : s.right, i);
+      }
+    }));
+    const j = { right: this.state.right, wrong: this.state.wrong };
+    localStorage['score'] = JSON.stringify(j);
   }
 
   _handleMidi(m: WebMidi.MIDIMessageEvent) {
@@ -108,6 +158,7 @@ class App extends React.Component<AppProps, AppState> {
           }
         }));
         if (this.state.remainingInput.length == 0) {
+          this._scoreLastProblem();
           this.newProblemSoon(this.state.mistake);
         }
       }
