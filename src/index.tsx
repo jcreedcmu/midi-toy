@@ -4,6 +4,8 @@ import * as React from 'react';
 import { render } from 'react-dom';
 import { produce } from 'immer';
 
+const intervalName = ['m2', 'P2', 'm3', 'M3', 'P4', '+4', 'P5', 'm6', 'M7', 'm7', 'M7', 'P8'].map(x => x + "\u00ba");
+
 type Interval = { t: number };
 type Note = { p: number };
 type AppProps = {};
@@ -81,19 +83,28 @@ class App extends React.Component<AppProps, AppState> {
     else if (s.remainingInput.length == 0)
       uiclass = "right";
     const rows = [undefined, s.right, s.wrong].map((table, rowi) => {
-      const cells = range(12).map((p, pi) => {
+      const cells = range(13).map((p, pi) => {
+        let s: JSX.Element | string | number = '';
         if (table == undefined)
-          return <td key={`tr${rowi}td${pi}`}><b>{p + 1}</b></td>;
+          if (pi == 0)
+            s = '';
+          else
+            s = <b>{intervalName[p - 1]}</b>;
         else
-          return <td key={`tr${rowi}td${pi}`}>{table[p + 1] || 0}</td>;
+          if (pi == 0)
+            s = <b>{rowi == 1 ? 'right' : 'wrong'}</b>;
+          else
+            s = table[p] || 0;
+        return <td key={`tr${rowi}td${pi}`}>{s}</td>;
       });
       return <tr key={`tr${rowi}`}>{cells}</tr>;
     });
     const scoreTable = <table><tbody>{rows}</tbody></table>;
+    /* {s.playedIntervalSize}< br />
+	  * {JSON.stringify(s.remainingInput.map(x => x.p))}
+	  */
     return (
       <div id="ui" className={uiclass}>
-        {s.playedIntervalSize}< br />
-        {JSON.stringify(s.remainingInput.map(x => x.p))}
         {scoreTable}
       </div>
     );
@@ -103,14 +114,14 @@ class App extends React.Component<AppProps, AppState> {
       (acc) => {
         for (const port of acc.outputs.values()) {
           if (!port.name!.match(/through/i)) {
-            console.log(port);
+            // console.log(port);
             this.outPort = port;
           }
         }
         let inPort: WebMidi.MIDIInput | undefined;
         for (const port of acc.inputs.values()) {
           if (!port.name!.match(/through/i)) {
-            console.log(port);
+            // console.log(port);
             inPort = port;
           }
         }

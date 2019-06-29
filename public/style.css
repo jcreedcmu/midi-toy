@@ -13,3 +13,11 @@
  }
 
 body { margin: 0px; }
+
+table {
+  border-spacing: 1em;
+}
+
+table tr td:nth-child(1) {
+  text-align: right;
+}
